@@ -8,10 +8,19 @@
 </head>
 <body>
   <header>
-    <div class="brand"><img src="marlowe-logo.png" alt="The Marlowe Collection logo"/></div>
-    <h1>The Marlowe Collection — Quick Order</h1>
-    <p class="sub">Mobile-friendly ordering for The Marlowe Collection</p>
-  </header>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+    <div style="flex:1 1 auto;text-align:center">
+      <!-- your existing brand/logo/title -->
+      <div class="brand"><img src="marlowe-logo.png" alt="The Marlowe Collection logo"/></div>
+      <h1>The Marlowe Collection — Quick Order</h1>
+      <p class="sub">Mobile-friendly ordering for The Marlowe Collection</p>
+    </div>
+    <div style="flex:0 0 auto;display:flex;gap:8px">
+      <button onclick="contractorSignIn()">Contractor sign in</button>
+      <button onclick="contractorSignOut()">Sign out</button>
+    </div>
+  </div>
+</header>
 
   <section class="card">
     <h2>Customer Info</h2>
