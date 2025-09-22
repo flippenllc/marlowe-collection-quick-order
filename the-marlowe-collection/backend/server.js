@@ -13,6 +13,20 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(express.static('frontend'));
+// Simple in-memory token store for contractor sessions (MVP)
+const contractorSessions = new Set();
+
+app.post('/api/login', (req, res) => {
+  const { email, code } = req.body || {};
+  const ACCESS = process.env.CONTRACTOR_ACCESS_CODE || 'contractor';
+  if(!email || !code) return res.status(400).json({ ok:false, error:'Missing email or code' });
+  if(code === ACCESS){
+    const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    contractorSessions.add(token);
+    return res.json({ ok:true, token });
+  }
+  return res.status(401).json({ ok:false, error:'Invalid code' });
+});
 
 // serve inventory
 app.get('/api/inventory', (req,res)=>{
@@ -64,7 +78,7 @@ function makePO({company,name,email,phone,address,po,tier,items}){
       doc.moveDown(0.25);
     });
 
-    const tax = subtotal*0.07;
+    const tax = subtotal*0.0925;
     const total = subtotal+tax;
     doc.moveDown();
     doc.fontSize(12).text(`Subtotal: $${subtotal.toFixed(2)}`);
@@ -81,11 +95,15 @@ function makePO({company,name,email,phone,address,po,tier,items}){
 // email order
 app.post('/api/order', async (req,res)=>{
   try{
-    const {company,name,email,phone,address,po,tier,items} = req.body;
+    const {company,name,email,phone,address,po,tier,items,authToken} = req.body;
     if(!email || !name || !items || items.length===0){
       return res.status(400).json({ok:false, error:'Missing name/email/items'});
     }
-
+    if(tier === 'contractor'){
+  if(!authToken || !contractorSessions.has(authToken)){
+    return res.status(403).json({ ok:false, error:'Contractor login required' });
+  }
+}
     const pdf = await makePO({company,name,email,phone,address,po,tier,items});
 
     const transporter = nodemailer.createTransport({
