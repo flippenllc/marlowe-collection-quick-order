@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Marlowe Collection — Quick Order</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <div class="brand"><img src="marlowe-logo.png" alt="The Marlowe Collection logo"/></div>
+    <h1>The Marlowe Collection — Quick Order</h1>
+    <p class="sub">Mobile-friendly ordering for The Marlowe Collection</p>
+  </header>
+
+  <section class="card">
+    <h2>Customer Info</h2>
+    <div class="grid">
+      <label>Company<input id="company" placeholder="Your company name" /></label>
+      <label>Contact Name<input id="name" placeholder="Your name" /></label>
+      <label>Email<input id="email" type="email" placeholder="email@domain.com" /></label>
+      <label>Phone<input id="phone" placeholder="(###) ###-####" /></label>
+      <label>Delivery Address<textarea id="address" rows="2" placeholder="Street, City, State"></textarea></label>
+      <label>PO / Job #<input id="po" placeholder="Optional PO or Job number" /></label>
+      <label>Pricing Tier
+        <select id="tier">
+          <option value="retail">Retail</option>
+          <option value="contractor">Contractor</option>
+        </select>
+      </label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Browse & Add Items</h2>
+    <div class="filters">
+      <input id="search" placeholder="Search items..." />
+      <select id="category"></select>
+    </div>
+    <div id="items"></div>
+  </section>
+
+  <section class="card">
+    <h2>Cart</h2>
+    <div id="cart"></div>
+    <div class="totals">
+      <div>Subtotal: $<span id="subtotal">0.00</span></div>
+      <div>Tax (7%): $<span id="tax">0.00</span></div>
+      <div class="grand">Total: $<span id="total">0.00</span></div>
+    </div>
+    <button id="submitBtn">Submit Order</button>
+    <p class="small">You will receive a confirmation email with a PDF purchase order. We'll reply with an invoice link to pay remotely.</p>
+  </section>
+
+  <footer>
+    <p>&copy; <span id="year"></span> The Marlowe Collection</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

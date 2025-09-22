@@ -1,0 +1,35 @@
+[
+  {
+    "sku": "SKU1001",
+    "name": "Lumber - 2x4x8",
+    "category": "Core Materials",
+    "supplier": "Bailey Lumber",
+    "notes": "Framing lumber",
+    "priceRetail": 5.0,
+    "priceContractor": 4.5,
+    "qtyAvailable": 200,
+    "reorderPoint": 80
+  },
+  {
+    "sku": "SKU1002",
+    "name": "Drywall 4x8 1/2in",
+    "category": "Core Materials",
+    "supplier": "Bailey Lumber",
+    "notes": "Standard interior use",
+    "priceRetail": 15.0,
+    "priceContractor": 13.5,
+    "qtyAvailable": 100,
+    "reorderPoint": 35
+  },
+  {
+    "sku": "SKU1003",
+    "name": "Vinyl plank flooring (sq ft)",
+    "category": "Interior Finishes",
+    "supplier": "Shaw/Mohawk",
+    "notes": "3 trendy colors",
+    "priceRetail": 2.5,
+    "priceContractor": 2.25,
+    "qtyAvailable": 2000,
+    "reorderPoint": 400
+  }
+]
