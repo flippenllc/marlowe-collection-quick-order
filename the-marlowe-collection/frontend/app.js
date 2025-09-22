@@ -3,22 +3,28 @@ let AUTH_TOKEN = localStorage.getItem('marlowe_auth') || null;
 
 function isLoggedIn(){ return !!AUTH_TOKEN; }
 
+function updateLoginBadge(){
+  const badge = document.getElementById('loginBadge');
+  if(!badge) return;
+  badge.textContent = isLoggedIn() ? 'Signed in (contractor)' : '';
+}
+
 function showContractorOption(){
   const tierSel = document.getElementById('tier');
-  const contractorOption = [...tierSel.options].find(o => o.value === 'contractor');
-  if (!contractorOption) return;
-  if (isLoggedIn()){
+  const contractorOption = [...tierSel.options].find(o=>o.value==='contractor');
+  if(!contractorOption) return;
+  if(isLoggedIn()){
     contractorOption.disabled = false;
-  } else {
-    if (tierSel.value === 'contractor') tierSel.value = 'retail';
+  }else{
+    if(tierSel.value==='contractor') tierSel.value='retail';
     contractorOption.disabled = true;
   }
 }
 
 async function contractorSignIn(){
-  const email = prompt('Contractor email:');
-  const code  = prompt('Access code:');
-  if(!email || !code) return;
+  const email = document.getElementById('loginEmail').value.trim();
+  const code  = document.getElementById('loginCode').value.trim();
+  if(!email || !code){ alert('Enter email and access code'); return; }
 
   const res = await fetch('/api/login', {
     method:'POST',
@@ -29,19 +35,20 @@ async function contractorSignIn(){
   if(data.ok){
     AUTH_TOKEN = data.token;
     localStorage.setItem('marlowe_auth', AUTH_TOKEN);
-    alert('Signed in. Contractor pricing enabled.');
+    updateLoginBadge();
     showContractorOption(); renderItems(); renderCart();
-  } else {
-    alert('Login failed: ' + data.error);
+  }else{
+    alert('Login failed: '+data.error);
   }
 }
 
 function contractorSignOut(){
   AUTH_TOKEN = null;
   localStorage.removeItem('marlowe_auth');
-  alert('Signed out.');
+  updateLoginBadge();
   showContractorOption(); renderItems(); renderCart();
 }
+
 
 async function loadInventory(){
   const res = await fetch('/api/inventory');
@@ -174,3 +181,4 @@ document.getElementById('year').textContent = new Date().getFullYear();
 
 loadInventory();
 showContractorOption();
+updateLoginBadge();
