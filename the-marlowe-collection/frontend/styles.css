@@ -10,6 +10,21 @@ header h1{margin:0;font-size:1.25rem}
 .sub{margin:.25rem 0 0;color:#c9d1d9}
 .brand{display:flex;justify-content:center;align-items:center;margin-bottom:8px}
 .brand img{height:48px;object-fit:contain}
+header button {
+  background:#D4AF37;    /* gold */
+  color:#0F172A;         /* slate text */
+  border:0;
+  border-radius:12px;
+  padding:10px 14px;
+  font-weight:700;
+  cursor:pointer;
+  transition: all 0.2s ease;
+}
+
+header button:hover {
+  background:#b08c2f;    /* darker gold on hover */
+  transform: translateY(-1px);
+}
 /* Cards: more rounded corners (was ~12px) */
 .card{
   background:#fff;
