@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
+
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
 import PDFDocument from 'pdfkit';
@@ -30,9 +31,14 @@ app.post('/api/login', (req, res) => {
 
 // serve inventory
 app.get('/api/inventory', (req,res)=>{
-  const invPath = path.join('backend','inventory.json');
-  const raw = fs.readFileSync(invPath,'utf8');
-  res.json(JSON.parse(raw));
+  try{
+    const invPath = path.resolve('backend','inventory.json'); // robust
+    const raw = fs.readFileSync(invPath,'utf8');
+    res.json(JSON.parse(raw));
+  }catch(e){
+    console.error('Inventory load error:', e);
+    res.status(500).json({ok:false, error:'Inventory not available'});
+  }
 });
 
 // create PDF PO
