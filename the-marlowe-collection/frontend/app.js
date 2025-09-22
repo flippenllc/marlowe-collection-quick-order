@@ -31,7 +31,7 @@ function showContractorOption(){
 async function contractorSignIn(){
   const email = document.getElementById('loginEmail').value.trim();
   const code  = document.getElementById('loginCode').value.trim();
-  if(!email || !code){ alert('Enter email and access code'); return; }
+  if(!email || !code){ alert('Enter email and code'); return; }
 
   const res = await fetch('/api/login', {
     method:'POST',
@@ -42,7 +42,10 @@ async function contractorSignIn(){
   if(data.ok){
     AUTH_TOKEN = data.token;
     localStorage.setItem('marlowe_auth', AUTH_TOKEN);
-    updateLoginBadge();
+    alert('Signed in as contractor.');
+    document.querySelector('.signin').style.display='none';
+    document.querySelector('.signout').style.display='inline-block';
+    closeLoginModal();
     showContractorOption(); renderItems(); renderCart();
   }else{
     alert('Login failed: '+data.error);
@@ -52,7 +55,9 @@ async function contractorSignIn(){
 function contractorSignOut(){
   AUTH_TOKEN = null;
   localStorage.removeItem('marlowe_auth');
-  updateLoginBadge();
+  alert('Signed out.');
+  document.querySelector('.signin').style.display='inline-block';
+  document.querySelector('.signout').style.display='none';
   showContractorOption(); renderItems(); renderCart();
 }
 
