@@ -35,6 +35,29 @@ header button.signout {
   border:2px solid #D4AF37;
   color:#D4AF37;
 }
+/* Modal styles */
+.modal {
+  display:none;
+  position:fixed;
+  z-index:1000;
+  left:0; top:0;
+  width:100%; height:100%;
+  background:rgba(0,0,0,0.5);
+}
+
+.modal-content {
+  background:#fff;
+  padding:20px;
+  margin:15% auto;
+  border-radius:12px;
+  width:90%; max-width:400px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.2);
+}
+
+.modal-content h3 {
+  margin-top:0;
+  color:#0F172A;
+}
 /* Cards: more rounded corners (was ~12px) */
 .card{
   background:#fff;
