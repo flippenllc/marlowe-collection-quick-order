@@ -1,4 +1,47 @@
 let INVENTORY=[], CART=[];
+let AUTH_TOKEN = localStorage.getItem('marlowe_auth') || null;
+
+function isLoggedIn(){ return !!AUTH_TOKEN; }
+
+function showContractorOption(){
+  const tierSel = document.getElementById('tier');
+  const contractorOption = [...tierSel.options].find(o => o.value === 'contractor');
+  if (!contractorOption) return;
+  if (isLoggedIn()){
+    contractorOption.disabled = false;
+  } else {
+    if (tierSel.value === 'contractor') tierSel.value = 'retail';
+    contractorOption.disabled = true;
+  }
+}
+
+async function contractorSignIn(){
+  const email = prompt('Contractor email:');
+  const code  = prompt('Access code:');
+  if(!email || !code) return;
+
+  const res = await fetch('/api/login', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ email, code })
+  });
+  const data = await res.json();
+  if(data.ok){
+    AUTH_TOKEN = data.token;
+    localStorage.setItem('marlowe_auth', AUTH_TOKEN);
+    alert('Signed in. Contractor pricing enabled.');
+    showContractorOption(); renderItems(); renderCart();
+  } else {
+    alert('Login failed: ' + data.error);
+  }
+}
+
+function contractorSignOut(){
+  AUTH_TOKEN = null;
+  localStorage.removeItem('marlowe_auth');
+  alert('Signed out.');
+  showContractorOption(); renderItems(); renderCart();
+}
 
 async function loadInventory(){
   const res = await fetch('/api/inventory');
@@ -89,7 +132,7 @@ function updateTotals(){
     const price = tier==='contractor'?c.priceContractor:c.priceRetail;
     subtotal += price*c.qty;
   });
-  const tax = subtotal*0.07;
+  const tax = subtotal*0.0925;
   const total = subtotal+tax;
   document.getElementById('subtotal').textContent = currency(subtotal);
   document.getElementById('tax').textContent = currency(tax);
@@ -106,6 +149,7 @@ async function submitOrder(){
     po: document.getElementById('po').value,
     tier: document.getElementById('tier').value,
     items: CART
+    authToken: AUTH_TOKEN   // <— include token
   };
   const res = await fetch('/api/order', {
     method: 'POST',
@@ -129,3 +173,4 @@ document.getElementById('submitBtn').addEventListener('click', submitOrder);
 document.getElementById('year').textContent = new Date().getFullYear();
 
 loadInventory();
+showContractorOption();
