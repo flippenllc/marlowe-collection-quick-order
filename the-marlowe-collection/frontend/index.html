@@ -8,17 +8,21 @@
 </head>
 <body>
   <header>
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
     <div style="flex:1 1 auto;text-align:center">
-      <!-- your existing brand/logo/title -->
       <div class="brand"><img src="marlowe-logo.png" alt="The Marlowe Collection logo"/></div>
       <h1>The Marlowe Collection — Quick Order</h1>
       <p class="sub">Mobile-friendly ordering for The Marlowe Collection</p>
     </div>
-    <div style="flex:0 0 auto;display:flex;gap:8px">
-      <button onclick="contractorSignIn()">Contractor sign in</button>
-      <button onclick="contractorSignOut()">Sign out</button>
-    </div>
+
+    <!-- Contractor login panel -->
+    <form id="loginForm" style="flex:0 0 auto;display:flex;gap:6px;align-items:center">
+      <input id="loginEmail" type="email" placeholder="Contractor email" style="padding:8px;border-radius:10px;border:1px solid #d0d7de" />
+      <input id="loginCode" type="password" placeholder="Access code" style="padding:8px;border-radius:10px;border:1px solid #d0d7de" />
+      <button type="button" onclick="contractorSignIn()">Sign in</button>
+      <button type="button" onclick="contractorSignOut()">Sign out</button>
+      <span id="loginBadge" class="small" style="margin-left:6px"></span>
+    </form>
   </div>
 </header>
 
