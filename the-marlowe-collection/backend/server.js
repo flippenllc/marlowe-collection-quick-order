@@ -82,7 +82,7 @@ function makePO({company,name,email,phone,address,po,tier,items}){
     const total = subtotal+tax;
     doc.moveDown();
     doc.fontSize(12).text(`Subtotal: $${subtotal.toFixed(2)}`);
-    doc.text(`Tax (7%): $${tax.toFixed(2)}`);
+    doc.text(`Tax (9.25%): $${tax.toFixed(2)}`);
     doc.text(`Total: $${total.toFixed(2)}`);
 
     doc.moveDown();
