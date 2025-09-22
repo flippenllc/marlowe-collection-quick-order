@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header>
+ <header>
   <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
     <div style="flex:1 1 auto;text-align:center">
       <div class="brand"><img src="marlowe-logo.png" alt="The Marlowe Collection logo"/></div>
@@ -15,16 +15,26 @@
       <p class="sub">Mobile-friendly ordering for The Marlowe Collection</p>
     </div>
 
-    <!-- Contractor login panel -->
-    <form id="loginForm" style="flex:0 0 auto;display:flex;gap:6px;align-items:center">
-      <input id="loginEmail" type="email" placeholder="Contractor email" style="padding:8px;border-radius:10px;border:1px solid #d0d7de" />
-      <input id="loginCode" type="password" placeholder="Access code" style="padding:8px;border-radius:10px;border:1px solid #d0d7de" />
-      <button class="signin" onclick="contractorSignIn()">Contractor sign in</button>
-      <button class="signout" onclick="contractorSignOut()">Sign out</button>
-      <span id="loginBadge" class="small" style="margin-left:6px"></span>
-    </form>
+    <!-- Simple clean login action -->
+    <div style="flex:0 0 auto">
+      <button class="signin" onclick="openLoginModal()">Contractor Sign In</button>
+      <button class="signout" style="display:none" onclick="contractorSignOut()">Sign Out</button>
+    </div>
   </div>
 </header>
+
+  <!-- Modal for sign-in -->
+<div id="loginModal" class="modal">
+  <div class="modal-content">
+    <h3>Contractor Access</h3>
+    <label>Email:<input id="loginEmail" type="email" placeholder="Contractor email" required></label>
+    <label>Access Code:<input id="loginCode" type="password" placeholder="Access code" required></label>
+    <div style="margin-top:10px">
+      <button onclick="contractorSignIn()">Sign In</button>
+      <button onclick="closeLoginModal()">Cancel</button>
+    </div>
+  </div>
+</div>
 
   <section class="card">
     <h2>Customer Info</h2>
