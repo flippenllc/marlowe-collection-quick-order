@@ -1,3 +1,10 @@
+function openLoginModal(){
+  document.getElementById('loginModal').style.display='block';
+}
+
+function closeLoginModal(){
+  document.getElementById('loginModal').style.display='none';
+}
 let INVENTORY=[], CART=[];
 let AUTH_TOKEN = localStorage.getItem('marlowe_auth') || null;
 
