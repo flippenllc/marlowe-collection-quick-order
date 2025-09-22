@@ -25,6 +25,16 @@ header button:hover {
   background:#b08c2f;    /* darker gold on hover */
   transform: translateY(-1px);
 }
+header button.signin {
+  background:#D4AF37;   /* gold solid */
+  color:#0F172A;
+}
+
+header button.signout {
+  background:transparent;
+  border:2px solid #D4AF37;
+  color:#D4AF37;
+}
 /* Cards: more rounded corners (was ~12px) */
 .card{
   background:#fff;
