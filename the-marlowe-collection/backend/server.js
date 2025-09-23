@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
+import session from 'express-session';
 
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
@@ -15,6 +17,11 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://localhost:5432/marlowe_collection';
 const useSSL = (process.env.DATABASE_SSL || '').toLowerCase() === 'true';
+const isProduction = (process.env.NODE_ENV || '').toLowerCase() === 'production';
+const ADMIN_USER = process.env.ADMIN_USER || 'admin';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS || 'change-me';
+const SESSION_SECRET = process.env.SESSION_SECRET || 'marlowe-session-secret';
+const SESSION_NAME = process.env.SESSION_NAME || 'marlowe_admin';
 
 const pool = new Pool({
   connectionString: DATABASE_URL,
@@ -39,6 +46,96 @@ const INVENTORY_SELECT = `
   FROM inventory
   ORDER BY name COLLATE "C"
 `;
+
+function timingSafeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') {
+    return false;
+  }
+  const aBuf = Buffer.from(a);
+  const bBuf = Buffer.from(b);
+  if (aBuf.length !== bBuf.length) {
+    return false;
+  }
+  return crypto.timingSafeEqual(aBuf, bBuf);
+}
+
+function mapInventoryRow(row) {
+  if (!row) {
+    return row;
+  }
+  return {
+    ...row,
+    priceRetail: Number(row.priceRetail),
+    priceContractor: Number(row.priceContractor),
+    qtyAvailable: Number(row.qtyAvailable),
+    reorderPoint: Number(row.reorderPoint)
+  };
+}
+
+function mapInventoryRows(rows = []) {
+  return rows.map(mapInventoryRow);
+}
+
+function normalizeInventoryPayload(payload = {}, { requireSku = true } = {}) {
+  const errors = [];
+
+  const sku = typeof payload.sku === 'string' ? payload.sku.trim() : '';
+  if (requireSku && !sku) {
+    errors.push('SKU is required.');
+  }
+
+  const name = typeof payload.name === 'string' ? payload.name.trim() : '';
+  if (!name) {
+    errors.push('Name is required.');
+  }
+
+  const category = typeof payload.category === 'string' ? payload.category.trim() : '';
+  const supplier = typeof payload.supplier === 'string' ? payload.supplier.trim() : '';
+  const notes = typeof payload.notes === 'string' ? payload.notes.trim() : '';
+
+  const priceRetail = Number.parseFloat(payload.priceRetail);
+  if (!Number.isFinite(priceRetail) || priceRetail < 0) {
+    errors.push('Retail price must be a non-negative number.');
+  }
+
+  const priceContractor = Number.parseFloat(payload.priceContractor);
+  if (!Number.isFinite(priceContractor) || priceContractor < 0) {
+    errors.push('Contractor price must be a non-negative number.');
+  }
+
+  const qtyAvailable = Number.parseInt(payload.qtyAvailable, 10);
+  if (!Number.isFinite(qtyAvailable) || qtyAvailable < 0) {
+    errors.push('Quantity available must be a non-negative integer.');
+  }
+
+  const reorderPointRaw = payload.reorderPoint;
+  let reorderPoint = null;
+  if (reorderPointRaw === '' || reorderPointRaw === null || reorderPointRaw === undefined) {
+    reorderPoint = 0;
+  } else {
+    const parsed = Number.parseInt(reorderPointRaw, 10);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      errors.push('Reorder point must be a non-negative integer.');
+    } else {
+      reorderPoint = parsed;
+    }
+  }
+
+  return {
+    errors,
+    item: {
+      sku: sku || undefined,
+      name,
+      category: category || null,
+      supplier: supplier || null,
+      notes: notes || null,
+      priceRetail: Number.isFinite(priceRetail) && priceRetail >= 0 ? priceRetail : undefined,
+      priceContractor: Number.isFinite(priceContractor) && priceContractor >= 0 ? priceContractor : undefined,
+      qtyAvailable: Number.isFinite(qtyAvailable) && qtyAvailable >= 0 ? qtyAvailable : undefined,
+      reorderPoint: Number.isFinite(reorderPoint) && reorderPoint >= 0 ? reorderPoint : 0
+    }
+  };
+}
 
 class InventoryError extends Error {
   constructor(code, message, details = {}) {
@@ -157,11 +254,198 @@ async function reserveInventory(client, items) {
   return reserved;
 }
 
-app.use(cors());
+if (isProduction) {
+  app.set('trust proxy', 1);
+}
+
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
 app.use(express.json());
+app.use(session({
+  name: SESSION_NAME,
+  secret: SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: isProduction,
+    maxAge: 1000 * 60 * 60 * 8
+  }
+}));
 app.use(express.static('frontend'));
 // Simple in-memory token store for contractor sessions (MVP)
 const contractorSessions = new Set();
+
+function requireAdmin(req, res, next) {
+  if (req.session && req.session.isAdmin) {
+    return next();
+  }
+  return res.status(401).json({ ok: false, error: 'Admin authentication required' });
+}
+
+app.get('/api/admin/session', (req, res) => {
+  if (req.session && req.session.isAdmin) {
+    return res.json({ ok: true, admin: { username: req.session.adminUser } });
+  }
+  return res.json({ ok: false });
+});
+
+app.post('/api/admin/login', (req, res) => {
+  const { username, password } = req.body || {};
+  if (!username || !password) {
+    return res.status(400).json({ ok: false, error: 'Missing username or password' });
+  }
+
+  const isUserValid = timingSafeEqual(username, ADMIN_USER);
+  const isPasswordValid = timingSafeEqual(password, ADMIN_PASSWORD);
+
+  if (!isUserValid || !isPasswordValid) {
+    return res.status(401).json({ ok: false, error: 'Invalid credentials' });
+  }
+
+  req.session.regenerate((err) => {
+    if (err) {
+      console.error('Failed to regenerate admin session:', err);
+      return res.status(500).json({ ok: false, error: 'Unable to establish session' });
+    }
+    req.session.isAdmin = true;
+    req.session.adminUser = ADMIN_USER;
+    return res.json({ ok: true, admin: { username: ADMIN_USER } });
+  });
+});
+
+app.post('/api/admin/logout', (req, res) => {
+  if (!req.session) {
+    return res.json({ ok: true });
+  }
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Failed to destroy admin session:', err);
+      return res.status(500).json({ ok: false, error: 'Failed to logout' });
+    }
+    res.clearCookie(SESSION_NAME, {
+      sameSite: 'lax',
+      secure: isProduction,
+      httpOnly: true
+    });
+    return res.json({ ok: true });
+  });
+});
+
+app.get('/api/admin/inventory', requireAdmin, async (req, res) => {
+  try {
+    const { rows } = await pool.query(INVENTORY_SELECT);
+    return res.json({ ok: true, items: mapInventoryRows(rows) });
+  } catch (error) {
+    console.error('Failed to load inventory for admin:', error);
+    return res.status(500).json({ ok: false, error: 'Unable to load inventory' });
+  }
+});
+
+app.post('/api/admin/inventory', requireAdmin, async (req, res) => {
+  const { errors, item } = normalizeInventoryPayload(req.body, { requireSku: true });
+  if (errors.length > 0) {
+    return res.status(400).json({ ok: false, error: errors.join(' ') });
+  }
+
+  try {
+    const insertQuery = `
+      INSERT INTO inventory (sku, name, category, supplier, notes, price_retail, price_contractor, qty_available, reorder_point)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING sku, name, category, supplier, notes, price_retail AS "priceRetail", price_contractor AS "priceContractor", qty_available AS "qtyAvailable", reorder_point AS "reorderPoint";
+    `;
+    const values = [
+      item.sku,
+      item.name,
+      item.category,
+      item.supplier,
+      item.notes,
+      item.priceRetail,
+      item.priceContractor,
+      item.qtyAvailable,
+      item.reorderPoint
+    ];
+    const { rows } = await pool.query(insertQuery, values);
+    return res.status(201).json({ ok: true, item: mapInventoryRow(rows[0]) });
+  } catch (error) {
+    if (error && error.code === '23505') {
+      return res.status(409).json({ ok: false, error: 'An item with this SKU already exists.' });
+    }
+    console.error('Failed to create inventory item:', error);
+    return res.status(500).json({ ok: false, error: 'Unable to create inventory item' });
+  }
+});
+
+app.put('/api/admin/inventory/:sku', requireAdmin, async (req, res) => {
+  const sku = (req.params.sku || '').trim();
+  if (!sku) {
+    return res.status(400).json({ ok: false, error: 'SKU is required.' });
+  }
+
+  const { errors, item } = normalizeInventoryPayload(req.body, { requireSku: false });
+  if (req.body && typeof req.body.sku === 'string' && req.body.sku.trim() && req.body.sku.trim() !== sku) {
+    return res.status(400).json({ ok: false, error: 'SKU in payload does not match URL parameter.' });
+  }
+
+  if (errors.length > 0) {
+    return res.status(400).json({ ok: false, error: errors.join(' ') });
+  }
+
+  try {
+    const updateQuery = `
+      UPDATE inventory
+      SET name = $1,
+          category = $2,
+          supplier = $3,
+          notes = $4,
+          price_retail = $5,
+          price_contractor = $6,
+          qty_available = $7,
+          reorder_point = $8
+      WHERE sku = $9
+      RETURNING sku, name, category, supplier, notes, price_retail AS "priceRetail", price_contractor AS "priceContractor", qty_available AS "qtyAvailable", reorder_point AS "reorderPoint";
+    `;
+    const values = [
+      item.name,
+      item.category,
+      item.supplier,
+      item.notes,
+      item.priceRetail,
+      item.priceContractor,
+      item.qtyAvailable,
+      item.reorderPoint,
+      sku
+    ];
+    const { rows } = await pool.query(updateQuery, values);
+    if (rows.length === 0) {
+      return res.status(404).json({ ok: false, error: 'Item not found.' });
+    }
+    return res.json({ ok: true, item: mapInventoryRow(rows[0]) });
+  } catch (error) {
+    console.error('Failed to update inventory item:', error);
+    return res.status(500).json({ ok: false, error: 'Unable to update inventory item' });
+  }
+});
+
+app.delete('/api/admin/inventory/:sku', requireAdmin, async (req, res) => {
+  const sku = (req.params.sku || '').trim();
+  if (!sku) {
+    return res.status(400).json({ ok: false, error: 'SKU is required.' });
+  }
+  try {
+    const { rowCount } = await pool.query('DELETE FROM inventory WHERE sku = $1', [sku]);
+    if (rowCount === 0) {
+      return res.status(404).json({ ok: false, error: 'Item not found.' });
+    }
+    return res.json({ ok: true });
+  } catch (error) {
+    console.error('Failed to delete inventory item:', error);
+    return res.status(500).json({ ok: false, error: 'Unable to delete inventory item' });
+  }
+});
 
 app.post('/api/login', (req, res) => {
   const { email, code } = req.body || {};
@@ -179,14 +463,7 @@ app.post('/api/login', (req, res) => {
 app.get('/api/inventory', async (req,res)=>{
   try{
     const { rows } = await pool.query(INVENTORY_SELECT);
-    const records = rows.map((row)=>({
-      ...row,
-      priceRetail: Number(row.priceRetail),
-      priceContractor: Number(row.priceContractor),
-      qtyAvailable: Number(row.qtyAvailable),
-      reorderPoint: Number(row.reorderPoint)
-    }));
-    res.json(records);
+    res.json(mapInventoryRows(rows));
   }catch(e){
     console.error('Inventory load error:', e);
     res.status(500).json({ok:false, error:'Inventory not available'});
@@ -383,13 +660,7 @@ app.post('/api/order', async (req,res)=>{
     });
 
     const { rows: updatedRows } = await pool.query(INVENTORY_SELECT);
-    const inventory = updatedRows.map((row)=>({
-      ...row,
-      priceRetail: Number(row.priceRetail),
-      priceContractor: Number(row.priceContractor),
-      qtyAvailable: Number(row.qtyAvailable),
-      reorderPoint: Number(row.reorderPoint)
-    }));
+    const inventory = mapInventoryRows(updatedRows);
 
     res.json({ok:true, inventory});
   }catch(err){

@@ -6,6 +6,13 @@ header{
   color:#fff;
   text-align:center;
 }
+header .header-actions{
+  flex:0 0 auto;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:8px;
+}
 header h1{margin:0;font-size:1.25rem}
 .sub{margin:.25rem 0 0;color:#c9d1d9}
 .brand{display:flex;justify-content:center;align-items:center;margin-bottom:8px}
@@ -34,6 +41,21 @@ header button.signout {
   background:transparent;
   border:2px solid #D4AF37;
   color:#D4AF37;
+}
+header .admin-link{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:10px 14px;
+  border-radius:12px;
+  border:2px solid #D4AF37;
+  color:#D4AF37;
+  text-decoration:none;
+  font-weight:700;
+  transition:all 0.2s ease;
+}
+header .admin-link:hover{
+  background:rgba(212,175,55,0.15);
 }
 /* Modal styles */
 .modal {

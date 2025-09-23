@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Marlowe Collection — Admin Console</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body class="admin-page">
+  <header>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+      <div style="flex:1 1 auto;text-align:center">
+        <div class="brand"><img src="marlowe-logo.png" alt="The Marlowe Collection logo" /></div>
+        <h1>The Marlowe Collection — Admin Console</h1>
+        <p class="sub">Manage inventory for the quick order experience</p>
+      </div>
+      <div class="header-actions">
+        <a class="admin-link" href="index.html">Quick Order App</a>
+        <button id="adminLogout" class="signout" style="display:none">Sign Out</button>
+      </div>
+    </div>
+  </header>
+  <main class="admin-main">
+    <section class="card" id="loginView">
+      <h2>Admin Sign In</h2>
+      <p class="small">Use the credentials supplied by ownership to manage inventory.</p>
+      <form id="loginForm" class="login-form">
+        <label>Username<input id="adminUsername" name="username" autocomplete="username" /></label>
+        <label>Password<input id="adminPassword" name="password" type="password" autocomplete="current-password" /></label>
+        <div class="button-row">
+          <button type="submit">Sign In</button>
+        </div>
+        <p class="form-message" id="loginMessage" role="alert"></p>
+      </form>
+    </section>
+
+    <section class="card" id="adminView" style="display:none">
+      <div class="admin-header">
+        <div>
+          <h2>Inventory Management</h2>
+          <p class="small">Signed in as <span id="adminIdentity"></span></p>
+        </div>
+        <div id="inventoryMeta" class="small"></div>
+      </div>
+      <div id="statusBar" class="status-bar" role="status"></div>
+      <div class="table-wrap">
+        <table class="inventory-table">
+          <thead>
+            <tr>
+              <th>SKU</th>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Supplier</th>
+              <th>Retail</th>
+              <th>Contractor</th>
+              <th>Qty</th>
+              <th>Reorder</th>
+              <th>Notes</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="inventoryTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" id="formCard" style="display:none">
+      <h2 id="formTitle">Add Inventory Item</h2>
+      <form id="itemForm">
+        <div class="grid">
+          <label>SKU<input id="itemSku" name="sku" required /></label>
+          <label>Name<input id="itemName" name="name" required /></label>
+          <label>Category<input id="itemCategory" name="category" /></label>
+          <label>Supplier<input id="itemSupplier" name="supplier" /></label>
+          <label>Retail Price<input id="itemRetail" name="priceRetail" type="number" step="0.01" min="0" required /></label>
+          <label>Contractor Price<input id="itemContractor" name="priceContractor" type="number" step="0.01" min="0" required /></label>
+          <label>Quantity Available<input id="itemQty" name="qtyAvailable" type="number" min="0" step="1" required /></label>
+          <label>Reorder Point<input id="itemReorder" name="reorderPoint" type="number" min="0" step="1" /></label>
+          <label class="notes-field">Notes<textarea id="itemNotes" name="notes" rows="3"></textarea></label>
+        </div>
+        <div class="button-row">
+          <button type="submit" id="saveItemBtn">Add Item</button>
+          <button type="button" id="resetFormBtn">Reset</button>
+          <button type="button" id="deleteItemBtn" class="danger" disabled>Delete Item</button>
+        </div>
+      </form>
+    </section>
+  </main>
+  <footer>
+    <p>&copy; <span id="year"></span> The Marlowe Collection</p>
+  </footer>
+
+  <script src="admin.js"></script>
+</body>
+</html>
