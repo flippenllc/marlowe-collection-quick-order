@@ -41,6 +41,71 @@ app.get('/api/inventory', (req,res)=>{
   }
 });
 
+app.get('/database', (req, res) => {
+  try {
+    const invPath = path.resolve('backend', 'inventory.json');
+    const raw = fs.readFileSync(invPath, 'utf8');
+    const inventory = JSON.parse(raw);
+
+    const rows = inventory.map(item => `
+      <tr>
+        <td>${item.sku}</td>
+        <td>${item.name}</td>
+        <td>${item.category}</td>
+        <td>${item.supplier || ''}</td>
+        <td>${item.notes || ''}</td>
+        <td>$${Number(item.priceRetail).toFixed(2)}</td>
+        <td>$${Number(item.priceContractor).toFixed(2)}</td>
+        <td>${item.qtyAvailable}</td>
+        <td>${item.reorderPoint ?? ''}</td>
+      </tr>
+    `).join('');
+
+    res.send(`<!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <title>Marlowe Collection Inventory</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            h1 { margin-bottom: 16px; }
+            table { border-collapse: collapse; width: 100%; max-width: 1200px; }
+            th, td { border: 1px solid #ccc; padding: 8px 10px; text-align: left; }
+            th { background: #f4f4f4; }
+            tr:nth-child(even) { background: #fafafa; }
+            .notice { margin-bottom: 12px; color: #555; }
+          </style>
+        </head>
+        <body>
+          <h1>The Marlowe Collection – Inventory</h1>
+          <p class="notice">This view is generated directly from <code>backend/inventory.json</code>.</p>
+          <table>
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Supplier</th>
+                <th>Notes</th>
+                <th>Retail Price</th>
+                <th>Contractor Price</th>
+                <th>Qty Available</th>
+                <th>Reorder Point</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows || '<tr><td colspan="9">No inventory data.</td></tr>'}
+            </tbody>
+          </table>
+        </body>
+      </html>`);
+  } catch (e) {
+    console.error('Inventory load error:', e);
+    res.status(500).send('Unable to load inventory.');
+  }
+});
+
 // create PDF PO
 function makePO({company,name,email,phone,address,po,tier,items}){
   return new Promise((resolve,reject)=>{
