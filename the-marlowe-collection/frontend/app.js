@@ -167,7 +167,7 @@ async function submitOrder(){
     address: document.getElementById('address').value,
     po: document.getElementById('po').value,
     tier: document.getElementById('tier').value,
-    items: CART
+    items: CART,
     authToken: AUTH_TOKEN   // <— include token
   };
   const res = await fetch('/api/order', {
