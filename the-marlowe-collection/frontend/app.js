@@ -28,6 +28,18 @@ function showContractorOption(){
   }
 }
 
+function applyAuthUI(){
+  const signedIn = isLoggedIn();
+  const signInBtn = document.querySelector('.signin');
+  const signOutBtn = document.querySelector('.signout');
+  if(signInBtn) signInBtn.style.display = signedIn ? 'none' : 'inline-block';
+  if(signOutBtn) signOutBtn.style.display = signedIn ? 'inline-block' : 'none';
+  showContractorOption();
+  updateLoginBadge();
+  renderItems();
+  renderCart();
+}
+
 async function contractorSignIn(){
   const email = document.getElementById('loginEmail').value.trim();
   const code  = document.getElementById('loginCode').value.trim();
@@ -42,23 +54,21 @@ async function contractorSignIn(){
   if(data.ok){
     AUTH_TOKEN = data.token;
     localStorage.setItem('marlowe_auth', AUTH_TOKEN);
-    alert('Signed in as contractor.');
-    document.querySelector('.signin').style.display='none';
-    document.querySelector('.signout').style.display='inline-block';
     closeLoginModal();
-    showContractorOption(); renderItems(); renderCart();
+    applyAuthUI();
+    alert('Signed in as contractor.');
   }else{
     alert('Login failed: '+data.error);
   }
 }
 
-function contractorSignOut(){
+function contractorSignOut(opts={}){
   AUTH_TOKEN = null;
   localStorage.removeItem('marlowe_auth');
-  alert('Signed out.');
-  document.querySelector('.signin').style.display='inline-block';
-  document.querySelector('.signout').style.display='none';
-  showContractorOption(); renderItems(); renderCart();
+  if(!opts.silent){
+    alert('Signed out.');
+  }
+  applyAuthUI();
 }
 
 
@@ -167,7 +177,7 @@ async function submitOrder(){
     address: document.getElementById('address').value,
     po: document.getElementById('po').value,
     tier: document.getElementById('tier').value,
-    items: CART
+    items: CART.map(item=>({ sku: item.sku, qty: item.qty })),
     authToken: AUTH_TOKEN   // <— include token
   };
   const res = await fetch('/api/order', {
@@ -191,6 +201,29 @@ document.getElementById('category').addEventListener('change', renderItems);
 document.getElementById('submitBtn').addEventListener('click', submitOrder);
 document.getElementById('year').textContent = new Date().getFullYear();
 
+async function validateStoredToken(){
+  if(!AUTH_TOKEN){
+    applyAuthUI();
+    return;
+  }
+  try{
+    const res = await fetch('/api/session/validate', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token: AUTH_TOKEN })
+    });
+    if(res.ok){
+      const data = await res.json();
+      if(data.ok){
+        applyAuthUI();
+        return;
+      }
+    }
+  }catch(err){
+    console.warn('Token validation failed', err);
+  }
+  contractorSignOut({silent:true});
+}
+
 loadInventory();
-showContractorOption();
-updateLoginBadge();
+validateStoredToken();

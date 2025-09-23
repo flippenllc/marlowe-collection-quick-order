@@ -10,6 +10,12 @@ import PDFDocument from 'pdfkit';
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
+const inventoryPath = path.resolve('backend', 'inventory.json');
+
+function loadInventory() {
+  const raw = fs.readFileSync(inventoryPath, 'utf8');
+  return JSON.parse(raw);
+}
 
 app.use(cors());
 app.use(express.json());
@@ -32,13 +38,19 @@ app.post('/api/login', (req, res) => {
 // serve inventory
 app.get('/api/inventory', (req,res)=>{
   try{
-    const invPath = path.resolve('backend','inventory.json'); // robust
-    const raw = fs.readFileSync(invPath,'utf8');
-    res.json(JSON.parse(raw));
+    res.json(loadInventory());
   }catch(e){
     console.error('Inventory load error:', e);
     res.status(500).json({ok:false, error:'Inventory not available'});
   }
+});
+
+app.post('/api/session/validate', (req, res) => {
+  const { token } = req.body || {};
+  if (token && contractorSessions.has(token)) {
+    return res.json({ ok: true });
+  }
+  return res.status(401).json({ ok: false, error: 'Session invalid' });
 });
 
 // create PDF PO
@@ -102,15 +114,38 @@ function makePO({company,name,email,phone,address,po,tier,items}){
 app.post('/api/order', async (req,res)=>{
   try{
     const {company,name,email,phone,address,po,tier,items,authToken} = req.body;
-    if(!email || !name || !items || items.length===0){
+    if(!email || !name || !Array.isArray(items) || items.length===0){
       return res.status(400).json({ok:false, error:'Missing name/email/items'});
     }
-    if(tier === 'contractor'){
-  if(!authToken || !contractorSessions.has(authToken)){
-    return res.status(403).json({ ok:false, error:'Contractor login required' });
-  }
-}
-    const pdf = await makePO({company,name,email,phone,address,po,tier,items});
+    const normalizedTier = tier === 'contractor' ? 'contractor' : 'retail';
+    if(normalizedTier === 'contractor'){
+      if(!authToken || !contractorSessions.has(authToken)){
+        return res.status(403).json({ ok:false, error:'Contractor login required' });
+      }
+    }
+
+    const inventory = loadInventory();
+    const inventoryBySku = new Map(inventory.map(item => [item.sku, item]));
+    const sanitizedItems = items.map((incoming) => {
+      const sku = incoming && typeof incoming.sku === 'string' ? incoming.sku : null;
+      const inv = sku ? inventoryBySku.get(sku) : undefined;
+      const qty = Number(incoming?.qty);
+      if(!inv){
+        throw new Error(`Unknown SKU: ${sku || 'unspecified'}`);
+      }
+      if(!Number.isInteger(qty) || qty <= 0){
+        throw new Error(`Invalid quantity for SKU ${inv.sku}`);
+      }
+      return {
+        sku: inv.sku,
+        name: inv.name,
+        priceRetail: inv.priceRetail,
+        priceContractor: inv.priceContractor,
+        qty
+      };
+    });
+
+    const pdf = await makePO({company,name,email,phone,address,po,tier: normalizedTier,items: sanitizedItems});
 
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
@@ -133,6 +168,12 @@ app.post('/api/order', async (req,res)=>{
     res.json({ok:true});
   }catch(err){
     console.error(err);
+    if (err.message && err.message.startsWith('Unknown SKU')) {
+      return res.status(400).json({ ok: false, error: err.message });
+    }
+    if (err.message && err.message.startsWith('Invalid quantity')) {
+      return res.status(400).json({ ok: false, error: err.message });
+    }
     res.status(500).json({ok:false, error: err.message});
   }
 });
