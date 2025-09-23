@@ -1,0 +1,135 @@
+.admin-page .admin-main{
+  max-width:1200px;
+  margin:0 auto;
+  padding:16px;
+}
+
+.admin-page .login-form,
+.admin-page #itemForm{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.admin-page .login-form label,
+.admin-page #itemForm label{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  font-size:0.95rem;
+}
+
+.admin-page .notes-field{
+  grid-column:1 / -1;
+}
+
+.admin-page .button-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:12px;
+}
+
+.admin-page .form-message{
+  min-height:1.25rem;
+  color:#b91c1c;
+  font-size:0.95rem;
+  margin:0;
+}
+
+.admin-page .form-message:empty{
+  display:none;
+}
+
+.admin-page .admin-header{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+  flex-wrap:wrap;
+}
+
+.admin-page .status-bar{
+  min-height:1.5rem;
+  margin:8px 0 4px;
+  font-size:0.95rem;
+}
+
+.admin-page .status-bar:empty{
+  display:none;
+}
+
+.admin-page .status-bar[data-type="error"]{ color:#b91c1c; }
+.admin-page .status-bar[data-type="success"]{ color:#15803d; }
+.admin-page .status-bar[data-type="info"]{ color:#1f2937; }
+
+.admin-page .table-wrap{
+  overflow-x:auto;
+}
+
+.admin-page .inventory-table{
+  width:100%;
+  border-collapse:collapse;
+  min-width:820px;
+}
+
+.admin-page .inventory-table th,
+.admin-page .inventory-table td{
+  text-align:left;
+  padding:10px;
+  border-bottom:1px solid #e5e7eb;
+  vertical-align:top;
+}
+
+.admin-page .inventory-table thead th{
+  background:#f3f4f6;
+  font-size:0.95rem;
+}
+
+.admin-page .inventory-table tbody tr:hover{
+  background:#f9fafb;
+}
+
+.admin-page .inventory-table .notes-cell{
+  max-width:220px;
+  white-space:pre-line;
+  word-break:break-word;
+}
+
+.admin-page .inventory-table .action-cell{
+  display:flex;
+  gap:8px;
+  justify-content:flex-end;
+  flex-wrap:wrap;
+}
+
+.admin-page .table-button{
+  padding:8px 12px;
+  font-size:0.9rem;
+  border-radius:12px;
+}
+
+.admin-page button.danger{
+  background:#7f1d1d;
+  color:#fff;
+}
+
+.admin-page button.danger:hover{
+  background:#991b1b;
+}
+
+.admin-page button.danger:disabled{
+  opacity:0.5;
+  cursor:not-allowed;
+}
+
+.admin-page #inventoryMeta{
+  min-width:120px;
+  text-align:right;
+}
+
+@media (max-width:700px){
+  .admin-page .inventory-table{
+    min-width:600px;
+  }
+}
