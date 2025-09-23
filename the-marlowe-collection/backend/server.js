@@ -3,7 +3,6 @@ import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import session from 'express-session';
 
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
@@ -20,8 +19,8 @@ const useSSL = (process.env.DATABASE_SSL || '').toLowerCase() === 'true';
 const isProduction = (process.env.NODE_ENV || '').toLowerCase() === 'production';
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS || 'change-me';
-const SESSION_SECRET = process.env.SESSION_SECRET || 'marlowe-session-secret';
-const SESSION_NAME = process.env.SESSION_NAME || 'marlowe_admin';
+const ADMIN_COOKIE_NAME = process.env.ADMIN_COOKIE_NAME || process.env.SESSION_NAME || 'marlowe_admin';
+const ADMIN_SESSION_TTL_MS = Number.parseInt(process.env.ADMIN_SESSION_TTL_MS || process.env.ADMIN_SESSION_TTL || `${1000 * 60 * 60 * 8}`, 10);
 
 const pool = new Pool({
   connectionString: DATABASE_URL,
@@ -263,34 +262,81 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
-app.use(session({
-  name: SESSION_NAME,
-  secret: SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: isProduction,
-    maxAge: 1000 * 60 * 60 * 8
-  }
-}));
 app.use(express.static('frontend'));
 // Simple in-memory token store for contractor sessions (MVP)
 const contractorSessions = new Set();
+const adminSessions = new Map();
+
+function parseCookies(req) {
+  const header = req.headers?.cookie;
+  if (!header) {
+    return {};
+  }
+  return header.split(';').reduce((acc, part) => {
+    const index = part.indexOf('=');
+    if (index === -1) {
+      return acc;
+    }
+    const key = decodeURIComponent(part.slice(0, index).trim());
+    const value = decodeURIComponent(part.slice(index + 1).trim());
+    if (key) {
+      acc[key] = value;
+    }
+    return acc;
+  }, {});
+}
+
+function getAdminToken(req) {
+  const cookies = parseCookies(req);
+  return cookies[ADMIN_COOKIE_NAME];
+}
+
+function getAdminSession(req) {
+  const token = getAdminToken(req);
+  if (!token) {
+    return null;
+  }
+  const session = adminSessions.get(token);
+  if (!session) {
+    return null;
+  }
+  const ttl = Number.isFinite(ADMIN_SESSION_TTL_MS) && ADMIN_SESSION_TTL_MS > 0 ? ADMIN_SESSION_TTL_MS : null;
+  if (ttl && Date.now() - session.createdAt > ttl) {
+    adminSessions.delete(token);
+    return null;
+  }
+  return { ...session, token };
+}
+
+function createAdminSession(username) {
+  const token = crypto.randomBytes(32).toString('hex');
+  const record = { username, createdAt: Date.now() };
+  adminSessions.set(token, record);
+  return { token, record };
+}
+
+function destroyAdminSession(token) {
+  if (token) {
+    adminSessions.delete(token);
+  }
+}
 
 function requireAdmin(req, res, next) {
-  if (req.session && req.session.isAdmin) {
-    return next();
+  const session = getAdminSession(req);
+  if (!session) {
+    return res.status(401).json({ ok: false, error: 'Admin authentication required' });
   }
-  return res.status(401).json({ ok: false, error: 'Admin authentication required' });
+  req.adminUser = session.username;
+  req.adminToken = session.token;
+  return next();
 }
 
 app.get('/api/admin/session', (req, res) => {
-  if (req.session && req.session.isAdmin) {
-    return res.json({ ok: true, admin: { username: req.session.adminUser } });
+  const session = getAdminSession(req);
+  if (!session) {
+    return res.json({ ok: false });
   }
-  return res.json({ ok: false });
+  return res.json({ ok: true, admin: { username: session.username } });
 });
 
 app.post('/api/admin/login', (req, res) => {
@@ -306,33 +352,28 @@ app.post('/api/admin/login', (req, res) => {
     return res.status(401).json({ ok: false, error: 'Invalid credentials' });
   }
 
-  req.session.regenerate((err) => {
-    if (err) {
-      console.error('Failed to regenerate admin session:', err);
-      return res.status(500).json({ ok: false, error: 'Unable to establish session' });
-    }
-    req.session.isAdmin = true;
-    req.session.adminUser = ADMIN_USER;
-    return res.json({ ok: true, admin: { username: ADMIN_USER } });
-  });
+  const { token, record } = createAdminSession(ADMIN_USER);
+  const cookieOptions = {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: isProduction
+  };
+  if (Number.isFinite(ADMIN_SESSION_TTL_MS) && ADMIN_SESSION_TTL_MS > 0) {
+    cookieOptions.maxAge = ADMIN_SESSION_TTL_MS;
+  }
+  res.cookie(ADMIN_COOKIE_NAME, token, cookieOptions);
+  return res.json({ ok: true, admin: { username: record.username } });
 });
 
 app.post('/api/admin/logout', (req, res) => {
-  if (!req.session) {
-    return res.json({ ok: true });
-  }
-  req.session.destroy((err) => {
-    if (err) {
-      console.error('Failed to destroy admin session:', err);
-      return res.status(500).json({ ok: false, error: 'Failed to logout' });
-    }
-    res.clearCookie(SESSION_NAME, {
-      sameSite: 'lax',
-      secure: isProduction,
-      httpOnly: true
-    });
-    return res.json({ ok: true });
+  const token = getAdminToken(req);
+  destroyAdminSession(token);
+  res.clearCookie(ADMIN_COOKIE_NAME, {
+    sameSite: 'lax',
+    secure: isProduction,
+    httpOnly: true
   });
+  return res.json({ ok: true });
 });
 
 app.get('/api/admin/inventory', requireAdmin, async (req, res) => {
