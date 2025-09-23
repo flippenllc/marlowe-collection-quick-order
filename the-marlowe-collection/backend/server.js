@@ -14,9 +14,19 @@ const { Pool } = pkg;
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://localhost:5432/marlowe_collection';
-const useSSL = (process.env.DATABASE_SSL || '').toLowerCase() === 'true';
-const isProduction = (process.env.NODE_ENV || '').toLowerCase() === 'production';
+const explicitSsl = process.env.DATABASE_SSL;
+const isProduction = ((process.env.NODE_ENV || '').toLowerCase() === 'production') || Boolean(process.env.RENDER);
+const DEFAULT_LOCAL_DB = 'postgresql://localhost:5432/marlowe_collection';
+const DATABASE_URL = process.env.DATABASE_URL || (!isProduction ? DEFAULT_LOCAL_DB : '');
+
+if (!DATABASE_URL) {
+  console.error('DATABASE_URL is not configured. Set it in the environment so the server can reach PostgreSQL.');
+  process.exit(1);
+}
+
+const useSSL = typeof explicitSsl === 'string'
+  ? explicitSsl.toLowerCase() === 'true'
+  : isProduction;
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS || 'change-me';
 const ADMIN_COOKIE_NAME = process.env.ADMIN_COOKIE_NAME || process.env.SESSION_NAME || 'marlowe_admin';
@@ -718,5 +728,8 @@ initializeDatabase()
   })
   .catch((err) => {
     console.error('Failed to initialize database:', err);
+    if (!explicitSsl && isProduction) {
+      console.error('Hint: Managed Postgres providers like Render require TLS. Set DATABASE_SSL=true.');
+    }
     process.exit(1);
   });
